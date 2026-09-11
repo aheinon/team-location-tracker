@@ -175,6 +175,9 @@
     padding: 10px 6px;
     background: var(--bg);
     border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 3;
   }
 
   thead th.name-col { text-align: left; padding-left: 16px; }
@@ -185,6 +188,10 @@
     font-size: 11px;
     color: var(--muted);
     margin-top: 2px;
+  }
+
+  table td:not(:first-child), table th:not(:first-child) {
+    border-left: 1px solid var(--border);
   }
 
   tbody td {
@@ -351,7 +358,13 @@
   </div>
 
   <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin: 4px 0 16px; flex-wrap: wrap;">
-    <input type="text" id="filterInput" placeholder="Filter by name…" style="flex:1; min-width:160px; max-width:260px;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; flex:1;">
+      <input type="text" id="filterInput" placeholder="Filter by name…" style="flex:1; min-width:140px; max-width:220px;">
+      <div id="viewToggle" style="display:flex; border:1px solid var(--border); border-radius:7px; overflow:hidden;">
+        <button type="button" class="view-btn active" data-view="all" style="border:none; padding:7px 12px; font-size:13px; cursor:pointer; background:var(--ink); color:var(--surface);">Everyone</button>
+        <button type="button" class="view-btn" data-view="me" style="border:none; padding:7px 12px; font-size:13px; cursor:pointer; background:var(--surface); color:var(--ink);">Only me</button>
+      </div>
+    </div>
     <button class="btn ghost" id="settingsToggle" type="button" title="Manage people">⚙ Manage people</button>
   </div>
 
@@ -408,13 +421,13 @@
   // PASTE YOUR OWN FIREBASE PROJECT SETTINGS HERE (see setup notes above)
   // ----------------------------------------------------------------------
   const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDSa-YDaIzFw78JVxGTSI2hrdXxk0rScw0",
-  authDomain: "where-everyone-is.firebaseapp.com",
-  databaseURL: "https://where-everyone-is-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "where-everyone-is",
-  storageBucket: "where-everyone-is.firebasestorage.app",
-  messagingSenderId: "886760109009",
-  appId: "1:886760109009:web:8d843a9a978275e4dfe6f0"
+    apiKey: "AIzaSyDSa-YDaIzFw78JVxGTSI2hrdXxk0rScw0",
+    authDomain: "where-everyone-is.firebaseapp.com",
+    databaseURL: "https://where-everyone-is-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "where-everyone-is",
+    storageBucket: "where-everyone-is.firebasestorage.app",
+    messagingSenderId: "886760109009",
+    appId: "1:886760109009:web:8d843a9a978275e4dfe6f0"
   };
   // ----------------------------------------------------------------------
 
@@ -485,6 +498,7 @@
   }
 
   let filterText = "";
+  let viewMode = "all";
 
   function renderGroup(group, bodyId, emptyId) {
     const body = document.getElementById(bodyId);
@@ -494,6 +508,7 @@
     const keys = Object.keys(people).filter(k => {
       if ((people[k].group || "team") !== group) return false;
       if (filterText && !people[k].name.toLowerCase().includes(filterText)) return false;
+      if (viewMode === "me" && k !== meKey) return false;
       return true;
     });
     emptyState.style.display = keys.length === 0 ? "block" : "none";
@@ -709,6 +724,18 @@
   document.getElementById("filterInput").addEventListener("input", e => {
     filterText = e.target.value.trim().toLowerCase();
     renderBody();
+  });
+
+  document.querySelectorAll(".view-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      viewMode = btn.dataset.view;
+      document.querySelectorAll(".view-btn").forEach(b => {
+        const on = b === btn;
+        b.style.background = on ? "var(--ink)" : "var(--surface)";
+        b.style.color = on ? "var(--surface)" : "var(--ink)";
+      });
+      renderBody();
+    });
   });
 
   document.getElementById("prevWeek").onclick = () => {
