@@ -164,8 +164,12 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
-    overflow: hidden;
   }
+
+  thead tr:first-child th:first-child { border-top-left-radius: 10px; }
+  thead tr:first-child th:last-child { border-top-right-radius: 10px; }
+  tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
+  tbody tr:last-child td:last-child { border-bottom-right-radius: 10px; }
 
   thead th {
     font-family: 'Space Grotesk', sans-serif;
@@ -529,6 +533,8 @@
     emptyState.style.display = keys.length === 0 ? "block" : "none";
 
     keys.sort((a, b) => {
+      if (a === meKey) return -1;
+      if (b === meKey) return 1;
       const oa = people[a].order, ob = people[b].order;
       if (oa != null && ob != null) return oa - ob;
       if (oa != null) return -1;
