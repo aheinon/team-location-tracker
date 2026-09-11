@@ -190,6 +190,22 @@
     margin-top: 2px;
   }
 
+  .day-copy {
+    display: block;
+    margin: 4px auto 0;
+    font-size: 10px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .day-copy:hover {
+    color: var(--ink);
+    background: var(--border);
+  }
+
   table td:not(:first-child), table th:not(:first-child) {
     border-left: 1px solid var(--border);
   }
@@ -242,7 +258,7 @@
   .cell-btn[data-status="off"] { background: color-mix(in srgb, var(--off) 18%, white); color: var(--off); }
   .cell-btn[data-status="elsewhere"] { background: color-mix(in srgb, var(--elsewhere) 18%, white); color: var(--elsewhere); }
 
-  .table-scroll { overflow-x: auto; border-radius: 10px; }
+  .table-scroll { border-radius: 10px; }
 
   tbody tr[draggable="true"] { cursor: grab; }
   tbody tr.dragging { opacity: 0.35; }
@@ -490,7 +506,7 @@
       const th = document.createElement("th");
       th.innerHTML = `${d}<span class="date">${fmtDate(date)}</span>`;
       if (withDayCopy) {
-        th.innerHTML += `<button type="button" onclick="copyDay(${i})" title="Copy this day to the next" style="display:block; margin:4px auto 0; font-size:10px; border:none; background:transparent; color:var(--muted); cursor:pointer; padding:0;">copy →</button>`;
+        th.innerHTML += `<button type="button" class="day-copy" onclick="copyDay(${i})" title="Copy this day to the next">copy →</button>`;
       }
       headRow.appendChild(th);
     });
@@ -753,12 +769,6 @@
   document.getElementById("whoAmI").onchange = e => {
     meKey = e.target.value;
     localStorage.setItem("where_everyone_me", meKey);
-    renderBody();
-  };
-  document.getElementById("clearMe").onclick = () => {
-    meKey = "";
-    localStorage.removeItem("where_everyone_me");
-    document.getElementById("whoAmI").value = "";
     renderBody();
   };
 
