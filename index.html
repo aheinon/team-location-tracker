@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where's everyone</title>
+
+<!--
+  ========================================================================
+  SETUP (do this once):
+
+  1. Go to https://console.firebase.google.com and create a new project
+     (the free "Spark" tier is plenty for this).
+  2. Left menu: Build -> Realtime Database -> Create Database.
+     Pick a region (e.g. Europe), start in "test mode"
+     (or use the rules below straight away, see step 4).
+  3. Project settings (gear icon) -> General -> "Your apps" ->
+     add a Web app (</> icon). Copy the firebaseConfig you get
+     and paste it into FIREBASE_CONFIG below.
+  4. Realtime Database -> Rules -> paste this and publish
+     (fully open read/write for the whole team, no login):
+
+     {
+       "rules": {
+         ".read": true,
+         ".write": true
+       }
+     }
+
+     This is intentionally lightweight and requires no login.
+     If the data ever gets more sensitive, Firebase Authentication
+     can be added on top later without changing the rest.
+  5. Push this file to a GitHub repo and enable GitHub Pages
+     (Settings -> Pages -> Deploy from branch). Everyone on the
+     team can then open the same link.
+  ========================================================================
+-->
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #eff1ec;
+    --surface: #ffffff;
+    --ink: #1b2420;
+    --muted: #6b7570;
+    --border: #d8dbd3;
+    --home: #4a7fb5;
+    --office: #3f8c56;
+    --travel: #d1a13a;
+    --elsewhere: #c07f2e;
+    --off: #c1524c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 20px 60px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+
+  .subline {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 28px;
+  }
+
+  .identity-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .identity-bar label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  select, .btn, input[type="text"] {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 10px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .btn {
+    cursor: pointer;
+    font-weight: 500;
+    background: var(--ink);
+    color: var(--surface);
+    border: none;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn.ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--border);
+  }
+
+  .week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .week-nav .range {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .nav-btns { display: flex; gap: 6px; }
+  .nav-btns button {
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .nav-btns button:hover { background: var(--bg); }
+
+  .section-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    margin: 26px 0 8px;
+    color: var(--ink);
+  }
+  .section-label:first-of-type { margin-top: 4px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  thead th {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    text-align: center;
+    padding: 10px 6px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  thead th.name-col { text-align: left; padding-left: 16px; }
+  thead th .date {
+    display: block;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  tbody td {
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+    text-align: center;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  td.name-cell {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 500;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  tr.is-me td.name-cell {
+    color: var(--ink);
+  }
+  tr.is-me td.name-cell::after {
+    content: " · you";
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 12px;
+  }
+
+  .cell-btn {
+    width: 100%;
+    height: 54px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: background 0.12s;
+  }
+  .cell-btn:hover { background: rgba(0,0,0,0.03); }
+  .cell-btn.locked { cursor: not-allowed; }
+  .cell-btn.locked:hover { background: transparent; }
+
+  .cell-btn[data-status="home"] { background: color-mix(in srgb, var(--home) 18%, white); color: var(--home); }
+  .cell-btn[data-status="office"] { background: color-mix(in srgb, var(--office) 18%, white); color: var(--office); }
+  .cell-btn[data-status="travel"] { background: color-mix(in srgb, var(--travel) 18%, white); color: var(--travel); }
+  .cell-btn[data-status="off"] { background: color-mix(in srgb, var(--off) 18%, white); color: var(--off); }
+  .cell-btn[data-status="elsewhere"] { background: color-mix(in srgb, var(--elsewhere) 18%, white); color: var(--elsewhere); }
+
+  .table-scroll { overflow-x: auto; border-radius: 10px; }
+
+  tbody tr[draggable="true"] { cursor: grab; }
+  tbody tr.dragging { opacity: 0.35; }
+  .drag-handle {
+    display: inline-block;
+    width: 14px;
+    color: var(--muted);
+    margin-right: 6px;
+    user-select: none;
+  }
+
+  .roster-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .roster-item:hover { background: var(--bg); }
+  .roster-item .tag {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+  }
+  .roster-item .rm {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+  }
+  .roster-item .rm:hover { color: var(--off); }
+
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .add-row input { flex: 1; min-width: 160px; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch {
+    width: 11px; height: 11px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .swatch.home { background: var(--home); }
+  .swatch.office { background: var(--office); }
+  .swatch.travel { background: var(--travel); }
+  .swatch.off { background: var(--off); }
+  .swatch.elsewhere { background: var(--elsewhere); }
+
+  .empty-state {
+    text-align: center;
+    padding: 20px 20px;
+    color: var(--muted);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+  }
+
+  .status-line {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  @media (max-width: 560px) {
+    body { padding: 20px 12px 40px; }
+    h1 { font-size: 23px; }
+    .cell-btn { height: 48px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>Where's everyone</h1>
+  <p class="subline">Click a day to cycle through the status. Changes show up for everyone instantly.</p>
+
+  <div class="identity-bar">
+    <label for="whoAmI">This is me:</label>
+    <select id="whoAmI"></select>
+    <button class="btn ghost" id="clearMe" type="button">Switch</button>
+  </div>
+
+  <div class="week-nav">
+    <div class="range" id="weekRange">–</div>
+    <div class="nav-btns">
+      <button id="prevWeek" title="Previous week">‹</button>
+      <button id="thisWeek" title="This week" style="width:auto; padding:0 10px;">today</button>
+      <button id="nextWeek" title="Next week">›</button>
+    </div>
+  </div>
+  <div style="margin-bottom: 14px;">
+    <button class="btn ghost" id="copyWeekBtn" type="button" style="font-size:13px; padding:6px 10px;">Copy this week to next week</button>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin: 4px 0 16px; flex-wrap: wrap;">
+    <input type="text" id="filterInput" placeholder="Filter by name…" style="flex:1; min-width:160px; max-width:260px;">
+    <button class="btn ghost" id="settingsToggle" type="button" title="Manage people">⚙ Manage people</button>
+  </div>
+
+  <div id="settingsPanel" style="display:none; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;">
+    <div class="add-row" style="margin-top:0;">
+      <input type="text" id="newName" placeholder="Add a name…">
+      <select id="newGroup">
+        <option value="team">Team</option>
+        <option value="assistant">Assistant</option>
+      </select>
+      <button class="btn" id="addNameBtn" type="button">Add</button>
+    </div>
+    <div id="rosterList" style="margin-top: 14px; display: flex; flex-direction: column; gap: 4px;"></div>
+  </div>
+
+  <div class="section-label">Team</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr id="headRowTeam"></tr></thead>
+      <tbody id="bodyRowsTeam"></tbody>
+    </table>
+  </div>
+  <div id="emptyStateTeam" class="empty-state" style="display:none; margin-top:10px;">
+    No names yet. Add team members via "Manage people" above.
+  </div>
+
+  <div class="section-label">Assistants</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr id="headRowAssist"></tr></thead>
+      <tbody id="bodyRowsAssist"></tbody>
+    </table>
+  </div>
+  <div id="emptyStateAssist" class="empty-state" style="display:none; margin-top:10px;">
+    No assistants added yet.
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch office"></span> Office</span>
+    <span><span class="swatch home"></span> Home</span>
+    <span><span class="swatch travel"></span> Travel</span>
+    <span><span class="swatch elsewhere"></span> Off-site</span>
+    <span><span class="swatch off"></span> Off</span>
+    <span>Blank = not marked yet</span>
+  </div>
+
+  <p class="status-line" id="connStatus"></p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+  // ----------------------------------------------------------------------
+  // PASTE YOUR OWN FIREBASE PROJECT SETTINGS HERE (see setup notes above)
+  // ----------------------------------------------------------------------
+  const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDSa-YDaIzFw78JVxGTSI2hrdXxk0rScw0",
+  authDomain: "where-everyone-is.firebaseapp.com",
+  databaseURL: "https://where-everyone-is-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "where-everyone-is",
+  storageBucket: "where-everyone-is.firebasestorage.app",
+  messagingSenderId: "886760109009",
+  appId: "1:886760109009:web:8d843a9a978275e4dfe6f0"
+  };
+  // ----------------------------------------------------------------------
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const STATUS_ORDER = ["", "office", "home", "travel", "elsewhere", "off"];
+  const STATUS_LABEL = {
+    "": "", home: "Home", office: "Office", travel: "Travel",
+    off: "Off", elsewhere: "Off-site"
+  };
+
+  let people = {};       // { personKey: { name, group } }
+  let weekData = {};     // { personKey: { 0: status, 1: status, ... } }
+  let currentMonday = getMonday(new Date());
+  let meKey = localStorage.getItem("where_everyone_me") || "";
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  function getMonday(d) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = (day === 0 ? -6 : 1) - day;
+    date.setDate(date.getDate() + diff);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  function isoWeekKey(monday) {
+    const d = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate() + 3));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${pad(weekNo)}`;
+  }
+
+  function fmtDate(d) { return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; }
+
+  function slugify(name) {
+    return name.trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now().toString(36).slice(-4);
+  }
+
+  function renderWeekRange() {
+    const friday = new Date(currentMonday);
+    friday.setDate(friday.getDate() + 4);
+    document.getElementById("weekRange").textContent =
+      `Week ${isoWeekKey(currentMonday).split("W")[1]} · ${fmtDate(currentMonday)}–${fmtDate(friday)}`;
+  }
+
+  function renderHead(rowId, withDayCopy) {
+    const headRow = document.getElementById(rowId);
+    headRow.innerHTML = "";
+    const nameTh = document.createElement("th");
+    nameTh.className = "name-col";
+    nameTh.textContent = "Name";
+    headRow.appendChild(nameTh);
+    DAYS.forEach((d, i) => {
+      const date = new Date(currentMonday);
+      date.setDate(date.getDate() + i);
+      const th = document.createElement("th");
+      th.innerHTML = `${d}<span class="date">${fmtDate(date)}</span>`;
+      if (withDayCopy) {
+        th.innerHTML += `<button type="button" onclick="copyDay(${i})" title="Copy this day to the next" style="display:block; margin:4px auto 0; font-size:10px; border:none; background:transparent; color:var(--muted); cursor:pointer; padding:0;">copy →</button>`;
+      }
+      headRow.appendChild(th);
+    });
+  }
+
+  let filterText = "";
+
+  function renderGroup(group, bodyId, emptyId) {
+    const body = document.getElementById(bodyId);
+    const emptyState = document.getElementById(emptyId);
+    body.innerHTML = "";
+
+    const keys = Object.keys(people).filter(k => {
+      if ((people[k].group || "team") !== group) return false;
+      if (filterText && !people[k].name.toLowerCase().includes(filterText)) return false;
+      return true;
+    });
+    emptyState.style.display = keys.length === 0 ? "block" : "none";
+
+    keys.sort((a, b) => {
+      const oa = people[a].order, ob = people[b].order;
+      if (oa != null && ob != null) return oa - ob;
+      if (oa != null) return -1;
+      if (ob != null) return 1;
+      return people[a].name.localeCompare(people[b].name);
+    });
+
+    keys.forEach(key => {
+      const tr = document.createElement("tr");
+      if (key === meKey) tr.classList.add("is-me");
+      tr.draggable = true;
+      tr.dataset.personKey = key;
+      tr.addEventListener("dragstart", () => tr.classList.add("dragging"));
+      tr.addEventListener("dragend", () => tr.classList.remove("dragging"));
+
+      const nameTd = document.createElement("td");
+      nameTd.className = "name-cell";
+      nameTd.innerHTML = `<span class="drag-handle">⋮⋮</span>${people[key].name}`;
+      tr.appendChild(nameTd);
+
+      for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
+        const td = document.createElement("td");
+        const status = (weekData[key] && weekData[key][dayIdx]) || "";
+        const btn = document.createElement("button");
+        btn.className = "cell-btn";
+        btn.dataset.status = status;
+        btn.textContent = STATUS_LABEL[status];
+        const canEdit = key === meKey;
+        if (canEdit) {
+          btn.onclick = () => cycleStatus(key, dayIdx, status);
+        } else {
+          btn.classList.add("locked");
+          btn.onclick = () => {
+            alert(meKey ? "You can only edit your own row. Switch \"This is me\" to edit someone else's." : "Select \"This is me\" first to edit your row.");
+          };
+        }
+        td.appendChild(btn);
+        tr.appendChild(td);
+      }
+
+      body.appendChild(tr);
+    });
+  }
+
+  function getDragAfterElement(container, y) {
+    const rows = [...container.querySelectorAll("tr:not(.dragging)")];
+    return rows.reduce((closest, row) => {
+      const box = row.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset, element: row };
+      return closest;
+    }, { offset: -Infinity }).element;
+  }
+
+  function persistOrder(tbody) {
+    const rows = [...tbody.querySelectorAll("tr")];
+    const updates = {};
+    rows.forEach((row, idx) => { updates[`people/${row.dataset.personKey}/order`] = idx; });
+    db.ref().update(updates);
+  }
+
+  function setupDragTarget(tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    tbody.addEventListener("dragover", e => {
+      e.preventDefault();
+      const dragging = tbody.querySelector(".dragging");
+      if (!dragging) return;
+      const after = getDragAfterElement(tbody, e.clientY);
+      if (after == null) tbody.appendChild(dragging);
+      else tbody.insertBefore(dragging, after);
+    });
+    tbody.addEventListener("drop", e => {
+      e.preventDefault();
+      persistOrder(tbody);
+    });
+  }
+
+  function renderBody() {
+    renderGroup("team", "bodyRowsTeam", "emptyStateTeam");
+    renderGroup("assistant", "bodyRowsAssist", "emptyStateAssist");
+  }
+
+  function cycleStatus(personKey, dayIdx, current) {
+    const next = STATUS_ORDER[(STATUS_ORDER.indexOf(current) + 1) % STATUS_ORDER.length];
+    db.ref(`weeks/${isoWeekKey(currentMonday)}/${personKey}/${dayIdx}`).set(next);
+  }
+
+  function copyWeek() {
+    const sourceKey = isoWeekKey(currentMonday);
+    const nextMonday = new Date(currentMonday);
+    nextMonday.setDate(nextMonday.getDate() + 7);
+    const targetKey = isoWeekKey(nextMonday);
+    if (!confirm(`Copy week ${sourceKey} to week ${targetKey}? This overwrites any entries already set for that week.`)) return;
+    const updates = {};
+    Object.keys(people).forEach(personKey => {
+      updates[`weeks/${targetKey}/${personKey}`] = (weekData[personKey] || null);
+    });
+    db.ref().update(updates);
+  }
+
+  function copyDay(dayIdx) {
+    let targetWeekKey = isoWeekKey(currentMonday);
+    let targetDay = dayIdx + 1;
+    if (dayIdx === 4) {
+      const nextMonday = new Date(currentMonday);
+      nextMonday.setDate(nextMonday.getDate() + 7);
+      targetWeekKey = isoWeekKey(nextMonday);
+      targetDay = 0;
+    }
+    if (!confirm(`Copy ${DAYS[dayIdx]} to ${dayIdx === 4 ? "next Monday" : DAYS[targetDay]}? This overwrites any entries already set for that day.`)) return;
+    const updates = {};
+    Object.keys(people).forEach(personKey => {
+      const status = (weekData[personKey] && weekData[personKey][dayIdx]) || "";
+      updates[`weeks/${targetWeekKey}/${personKey}/${targetDay}`] = status;
+    });
+    db.ref().update(updates);
+  }
+
+  function renderRoster() {
+    const list = document.getElementById("rosterList");
+    list.innerHTML = "";
+    const keys = Object.keys(people).sort((a, b) => people[a].name.localeCompare(people[b].name));
+    if (keys.length === 0) {
+      list.innerHTML = `<div style="font-size:13px; color:var(--muted); padding:6px 8px;">No one added yet.</div>`;
+      return;
+    }
+    keys.forEach(key => {
+      const row = document.createElement("div");
+      row.className = "roster-item";
+      const groupLabel = (people[key].group || "team") === "assistant" ? "Assistant" : "Team";
+      row.innerHTML = `<span>${people[key].name}</span><span class="tag">${groupLabel}</span>`;
+      const rm = document.createElement("button");
+      rm.className = "rm";
+      rm.type = "button";
+      rm.title = "Remove from roster";
+      rm.textContent = "✕";
+      rm.onclick = () => deletePerson(key, people[key].name);
+      row.appendChild(rm);
+      list.appendChild(row);
+    });
+  }
+
+  function deletePerson(key, name) {
+    if (!confirm(`Remove ${name} from the roster? Their past weekly entries stay in the database but won't be shown anywhere.`)) return;
+    db.ref(`people/${key}`).remove();
+    if (meKey === key) {
+      meKey = "";
+      localStorage.removeItem("where_everyone_me");
+    }
+  }
+  function renderIdentitySelect() {
+    const sel = document.getElementById("whoAmI");
+    sel.innerHTML = "";
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "— select —";
+    sel.appendChild(blank);
+
+    ["team", "assistant"].forEach(group => {
+      const keys = Object.keys(people)
+        .filter(k => (people[k].group || "team") === group)
+        .sort((a, b) => people[a].name.localeCompare(people[b].name));
+      if (keys.length === 0) return;
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = group === "team" ? "Team" : "Assistants";
+      keys.forEach(key => {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = people[key].name;
+        if (key === meKey) opt.selected = true;
+        optgroup.appendChild(opt);
+      });
+      sel.appendChild(optgroup);
+    });
+  }
+
+  function loadWeek() {
+    db.ref(`weeks/${isoWeekKey(currentMonday)}`).off();
+    db.ref(`weeks/${isoWeekKey(currentMonday)}`).on("value", snap => {
+      weekData = snap.val() || {};
+      renderBody();
+    });
+    renderWeekRange();
+    renderHead("headRowTeam", true);
+    renderHead("headRowAssist", false);
+  }
+
+  document.getElementById("copyWeekBtn").onclick = copyWeek;
+
+  db.ref("people").on("value", snap => {
+    people = snap.val() || {};
+    renderIdentitySelect();
+    renderRoster();
+    renderBody();
+  }, err => {
+    document.getElementById("connStatus").textContent =
+      "Could not connect to the database. Check the Firebase settings at the top of this file.";
+  });
+
+  setupDragTarget("bodyRowsTeam");
+  setupDragTarget("bodyRowsAssist");
+
+  document.getElementById("settingsToggle").onclick = () => {
+    const panel = document.getElementById("settingsPanel");
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  };
+
+  document.getElementById("filterInput").addEventListener("input", e => {
+    filterText = e.target.value.trim().toLowerCase();
+    renderBody();
+  });
+
+  document.getElementById("prevWeek").onclick = () => {
+    currentMonday.setDate(currentMonday.getDate() - 7);
+    loadWeek();
+  };
+  document.getElementById("nextWeek").onclick = () => {
+    currentMonday.setDate(currentMonday.getDate() + 7);
+    loadWeek();
+  };
+  document.getElementById("thisWeek").onclick = () => {
+    currentMonday = getMonday(new Date());
+    loadWeek();
+  };
+
+  document.getElementById("whoAmI").onchange = e => {
+    meKey = e.target.value;
+    localStorage.setItem("where_everyone_me", meKey);
+    renderBody();
+  };
+  document.getElementById("clearMe").onclick = () => {
+    meKey = "";
+    localStorage.removeItem("where_everyone_me");
+    document.getElementById("whoAmI").value = "";
+    renderBody();
+  };
+
+  document.getElementById("addNameBtn").onclick = addName;
+  document.getElementById("newName").addEventListener("keydown", e => {
+    if (e.key === "Enter") addName();
+  });
+
+  function addName() {
+    const input = document.getElementById("newName");
+    const group = document.getElementById("newGroup").value;
+    const name = input.value.trim();
+    if (!name) return;
+    const key = slugify(name);
+    db.ref(`people/${key}`).set({ name, group }).then(() => {
+      meKey = key;
+      localStorage.setItem("where_everyone_me", meKey);
+      input.value = "";
+    });
+  }
+
+  loadWeek();
+</script>
+</body>
+</html>
