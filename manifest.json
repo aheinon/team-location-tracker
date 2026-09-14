@@ -1,0 +1,24 @@
+{
+  "name": "Where's everyone",
+  "short_name": "Where's everyone",
+  "description": "Track where the team is working each day of the week.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eff1ec",
+  "theme_color": "#1b2420",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
