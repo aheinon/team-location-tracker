@@ -214,6 +214,11 @@
     border-left: 1px solid var(--border);
   }
 
+  th.today-col, td.today-col {
+    background: var(--border);
+    box-shadow: inset 1px 0 0 var(--muted), inset -1px 0 0 var(--muted);
+  }
+
   tbody td {
     border-bottom: 1px solid var(--border);
     padding: 0;
@@ -399,15 +404,13 @@
     <div id="rosterList" style="margin-top: 14px; display: flex; flex-direction: column; gap: 4px;"></div>
   </div>
 
-  <div class="section-label">Team</div>
-  <div class="table-scroll">
-    <table>
-      <thead><tr id="headRowTeam"></tr></thead>
-      <tbody id="bodyRowsTeam"></tbody>
-    </table>
-  </div>
-  <div id="emptyStateTeam" class="empty-state" style="display:none; margin-top:10px;">
-    No names yet. Add team members via "Manage people" above.
+  <div class="legend">
+    <span><span class="swatch office"></span> Office</span>
+    <span><span class="swatch home"></span> Home</span>
+    <span><span class="swatch travel"></span> Travel</span>
+    <span><span class="swatch elsewhere"></span> Off-site</span>
+    <span><span class="swatch off"></span> Off</span>
+    <span>Blank = not marked yet</span>
   </div>
 
   <div class="section-label">Assistants</div>
@@ -421,13 +424,15 @@
     No assistants added yet.
   </div>
 
-  <div class="legend">
-    <span><span class="swatch office"></span> Office</span>
-    <span><span class="swatch home"></span> Home</span>
-    <span><span class="swatch travel"></span> Travel</span>
-    <span><span class="swatch elsewhere"></span> Off-site</span>
-    <span><span class="swatch off"></span> Off</span>
-    <span>Blank = not marked yet</span>
+  <div class="section-label">Team</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr id="headRowTeam"></tr></thead>
+      <tbody id="bodyRowsTeam"></tbody>
+    </table>
+  </div>
+  <div id="emptyStateTeam" class="empty-state" style="display:none; margin-top:10px;">
+    No names yet. Add team members via "Manage people" above.
   </div>
 
   <p class="status-line" id="connStatus"></p>
@@ -504,10 +509,12 @@
     nameTh.className = "name-col";
     nameTh.textContent = "Name";
     headRow.appendChild(nameTh);
+    const todayIdx = todayColumnIndex();
     DAYS.forEach((d, i) => {
       const date = new Date(currentMonday);
       date.setDate(date.getDate() + i);
       const th = document.createElement("th");
+      if (i === todayIdx) th.classList.add("today-col");
       th.innerHTML = `${d}<span class="date">${fmtDate(date)}</span>`;
       if (withDayCopy) {
         th.innerHTML += `<button type="button" class="day-copy" onclick="copyDay(${i})" title="Copy this day to the next">copy →</button>`;
@@ -518,6 +525,19 @@
 
   let filterText = "";
   let viewMode = "all";
+
+  function hasAnyStatus(key) {
+    const row = weekData[key];
+    if (!row) return false;
+    return Object.values(row).some(s => !!s);
+  }
+
+  function todayColumnIndex() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((today - currentMonday) / 86400000);
+    return diffDays >= 0 && diffDays <= 4 ? diffDays : -1;
+  }
 
   function renderGroup(group, bodyId, emptyId) {
     const body = document.getElementById(bodyId);
@@ -535,6 +555,8 @@
     keys.sort((a, b) => {
       if (a === meKey) return -1;
       if (b === meKey) return 1;
+      const fa = hasAnyStatus(a), fb = hasAnyStatus(b);
+      if (fa !== fb) return fa ? -1 : 1;
       const oa = people[a].order, ob = people[b].order;
       if (oa != null && ob != null) return oa - ob;
       if (oa != null) return -1;
@@ -555,8 +577,10 @@
       nameTd.innerHTML = `<span class="drag-handle">⋮⋮</span>${people[key].name}`;
       tr.appendChild(nameTd);
 
+      const todayIdx = todayColumnIndex();
       for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
         const td = document.createElement("td");
+        if (dayIdx === todayIdx) td.classList.add("today-col");
         const status = (weekData[key] && weekData[key][dayIdx]) || "";
         const btn = document.createElement("button");
         btn.className = "cell-btn";
